@@ -13,7 +13,10 @@ export const bubble = (options: Partial<messagingApi.FlexBubble> = {}): messagin
   ...omit(options, ['children']),
 })
 
-export const carousel = (contents: messagingApi.FlexBubble[], options: Partial<messagingApi.FlexCarousel> = {}): messagingApi.FlexCarousel => ({
+export const carousel = (
+  contents: messagingApi.FlexBubble[],
+  options: Partial<messagingApi.FlexCarousel> = {},
+): messagingApi.FlexCarousel => ({
   type: 'carousel',
   contents,
   ...omit(options, ['children']),

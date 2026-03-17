@@ -1,29 +1,73 @@
 import type {
+  AccountLinkEvent,
   BeaconEvent,
+  DeliveryEvent,
+  EventMessage,
   FollowEvent,
   JoinEvent,
   LeaveEvent,
+  MemberJoinEvent,
+  MemberLeaveEvent,
   MessageEvent,
   PostbackEvent,
   UnfollowEvent,
+  UnsendEvent,
+  VideoPlayCompleteEvent,
   WebhookEvent,
   WebhookRequestBody,
 } from '@line/bot-sdk'
+import { Hono } from 'hono'
 import { Context } from './context'
+import { isMatcher, isTextMatcher, type Matcher, type MessageEventOf, type TextMatcher } from './match'
 import type { Env, ExecutionContext, InitOptions, LineEnv, Verify } from './types'
 import { newError } from './utils'
 import { verify } from './verify'
 
 type LineHandler<E extends Env, T extends WebhookEvent = any> = (c: Context<E, T>) => Promise<unknown> | unknown
+type Next = () => Promise<void>
+type Middleware<E extends Env, T extends WebhookEvent = any> = (
+  c: Context<E, T>,
+  next: Next,
+) => Promise<unknown> | unknown
+type Plugin<E extends Env> = (app: LineHono<E>) => void
+type MessageMatcher = string | RegExp | TextMatcher | Matcher | Record<string, unknown>
+type MessageHandler<E extends Env, T extends EventMessage['type']> = LineHandler<E, MessageEventOf<T>>
+
+const compose = <E extends Env, T extends WebhookEvent>(
+  middlewares: Middleware<E, T>[],
+  handler: LineHandler<E, T>,
+): ((c: Context<E, T>, next?: Next) => Promise<void>) => {
+  const fns: Middleware<E, T>[] = [
+    ...middlewares,
+    async (c, _next) => {
+      await handler(c)
+    },
+  ]
+
+  return async (c: Context<E, T>, next?: Next) => {
+    let index = -1
+    await dispatch(0)
+
+    async function dispatch(i: number): Promise<void> {
+      if (i <= index) {
+        throw new Error('next() called multiple times')
+      }
+      index = i
+
+      const fn = fns[i] || (i === fns.length && next) || undefined
+      if (!fn) return
+      await (fn as any)(c, () => dispatch(i + 1))
+    }
+  }
+}
 
 export class LineHono<E extends Env = Env> {
   #verify: Verify
   #line: (env: unknown) => LineEnv
+  #http = new Hono()
   #handlers: Map<string, LineHandler<E, any>[]> = new Map()
-  #commands: Map<string, Function> = new Map()
-  #components: Map<string, Function> = new Map()
-  #modals: Map<string, Function> = new Map()
-  #crons: Map<string, Function> = new Map()
+  #middlewares: Middleware<E, any>[] = []
+  #middlewaresByType: Map<string, Middleware<E, any>[]> = new Map()
 
   constructor(options?: InitOptions<E>) {
     this.#verify = options?.verify ?? verify
@@ -35,6 +79,76 @@ export class LineHono<E extends Env = Env> {
         CHANNEL_ACCESS_TOKEN: lineEnv.CHANNEL_ACCESS_TOKEN || bindings['LINE_CHANNEL_ACCESS_TOKEN'],
       }
     }
+  }
+
+  /**
+   * Underlying Hono app for non-webhook routes.
+   *
+   * This is useful for health checks, extra endpoints, and HTTP middleware.
+   */
+  get http(): Hono {
+    return this.#http
+  }
+
+  /**
+   * Declare a webhook endpoint path (Hono-style).
+   *
+   * Example:
+   * - `app.webhook('/webhook')`
+   */
+  webhook(path: string): this {
+    this.#http.post(path, async (hc: any) => {
+      const req = hc.req.raw as Request
+      const env = hc.env as E['Bindings']
+      let executionCtx: ExecutionContext | undefined
+      try {
+        executionCtx = hc.executionCtx as ExecutionContext | undefined
+      } catch {
+        executionCtx = undefined
+      }
+      return await this.#handleWebhook(req, env, executionCtx)
+    })
+    return this
+  }
+
+  /**
+   * Register middleware or apply a plugin.
+   *
+   * Middleware:
+   * - `app.use(async (c, next) => { ...; await next(); ... })`
+   * - `app.use('message', async (c, next) => { ... })`
+   *
+   * Plugin (for splitting into files):
+   * - `app.use(app => { app.message(...); app.follow(...); })`
+   */
+  use(middleware: Middleware<E, any>): this
+  use<T extends WebhookEvent['type']>(type: T, middleware: Middleware<E, Extract<WebhookEvent, { type: T }>>): this
+  use(plugin: Plugin<E>): this
+  use(arg1: any, arg2?: any): this {
+    // use(type, middleware)
+    if (typeof arg1 === 'string' && typeof arg2 === 'function') {
+      const type = arg1
+      const middleware = arg2
+      if (!this.#middlewaresByType.has(type)) this.#middlewaresByType.set(type, [])
+      this.#middlewaresByType.get(type)?.push(middleware)
+      return this
+    }
+
+    // use(fn)
+    if (typeof arg1 === 'function' && arg2 === undefined) {
+      const fn = arg1 as Function
+
+      // middleware must be (c, next) => ...
+      if (fn.length >= 2) {
+        this.#middlewares.push(arg1 as Middleware<E, any>)
+        return this
+      }
+      // plugin: (app) => void
+      ;(arg1 as Plugin<E>)(this)
+      return this
+    }
+
+    throw new Error('Invalid arguments for use()')
   }
 
   /**
@@ -53,8 +167,124 @@ export class LineHono<E extends Env = Env> {
   /**
    * Register a handler for 'message' events.
    */
-  message(handler: LineHandler<E, MessageEvent>): this {
-    return this.on('message', handler)
+  message(handler: LineHandler<E, MessageEvent>): this
+  message(matcher: string | RegExp, handler: MessageHandler<E, 'text'>): this
+  message(matcher: Matcher<'text'>, handler: MessageHandler<E, 'text'>): this
+  message(matcher: TextMatcher, handler: MessageHandler<E, 'text'>): this
+  message(matcher: Matcher<'sticker'>, handler: MessageHandler<E, 'sticker'>): this
+  message(matcher: Matcher<'image'>, handler: MessageHandler<E, 'image'>): this
+  message(matcher: Matcher<'video'>, handler: MessageHandler<E, 'video'>): this
+  message(matcher: Matcher<'audio'>, handler: MessageHandler<E, 'audio'>): this
+  message(matcher: Matcher<'file'>, handler: MessageHandler<E, 'file'>): this
+  message(matcher: Matcher<'location'>, handler: MessageHandler<E, 'location'>): this
+  message(matcher: MessageMatcher, handler: LineHandler<E, MessageEvent>): this
+  message(arg1: MessageMatcher | LineHandler<E, MessageEvent>, arg2?: LineHandler<E, any>): this {
+    if (typeof arg1 === 'function') {
+      return this.on('message', arg1)
+    }
+
+    const matcher = arg1
+    const handler = arg2
+    if (!handler) throw new Error('handler is required')
+
+    return this.on('message', c => {
+      if (this.#matchMessage(c.event, matcher)) return handler(c)
+      return
+    })
+  }
+
+  /**
+   * Text message sugar.
+   *
+   * Usage:
+   * - `app.text('ping', c => c.reply.text('pong'))`
+   * - `app.text(/ping/i, c => c.reply.text('pong'))`
+   */
+  text(matcher: string | RegExp, handler: MessageHandler<E, 'text'>): this {
+    return this.message(matcher, handler)
+  }
+
+  /**
+   * Sticker message sugar.
+   *
+   * Usage:
+   * - `app.sticker('1', '2', c => c.reply.text('nice'))`
+   * - `app.sticker(undefined, '2', handler)` (match only stickerId)
+   */
+  sticker(packageId: string | undefined, stickerId: string | undefined, handler: MessageHandler<E, 'sticker'>): this {
+    return this.message({ type: 'sticker', packageId, stickerId } as any, handler)
+  }
+
+  image(handler: MessageHandler<E, 'image'>): this {
+    return this.message({ type: 'image' } as any, handler)
+  }
+
+  video(handler: MessageHandler<E, 'video'>): this {
+    return this.message({ type: 'video' } as any, handler)
+  }
+
+  audio(handler: MessageHandler<E, 'audio'>): this {
+    return this.message({ type: 'audio' } as any, handler)
+  }
+
+  file(handler: MessageHandler<E, 'file'>): this {
+    return this.message({ type: 'file' } as any, handler)
+  }
+
+  location(handler: MessageHandler<E, 'location'>): this {
+    return this.message({ type: 'location' } as any, handler)
+  }
+
+  #matchMessage(event: MessageEvent, matcher: MessageMatcher): boolean {
+    const msg = event.message as any
+
+    // match.text(...) (always returns a matcher)
+    if (isTextMatcher(matcher)) {
+      if (msg?.type !== 'text') return false
+      const text = msg?.text
+      if (typeof text !== 'string') return false
+      return typeof matcher.value === 'string' ? text === matcher.value : matcher.value.test(text)
+    }
+
+    // typed matcher (preferred)
+    if (isMatcher(matcher)) {
+      if (msg?.type !== matcher.type) return false
+      if (matcher.where) {
+        for (const [k, v] of Object.entries(matcher.where as any)) {
+          if (v === undefined) continue
+          if (msg?.[k] !== v) return false
+        }
+      }
+      return true
+    }
+
+    // text message match
+    if (typeof matcher === 'string' || matcher instanceof RegExp) {
+      if (msg?.type !== 'text') return false
+      const text = msg?.text
+      if (typeof text !== 'string') return false
+      return typeof matcher === 'string' ? text === matcher : matcher.test(text)
+    }
+
+    // message object match (same shape as `c.push({ ... })`)
+    const m = matcher as Record<string, unknown>
+    if (typeof m['type'] !== 'string') return false
+    if (msg?.type !== m['type']) return false
+
+    // match only provided keys (excluding "type")
+    for (const [k, v] of Object.entries(m)) {
+      if (k === 'type') continue
+      if (v === undefined) continue
+      if (msg?.[k] !== v) return false
+    }
+    return true
+  }
+
+  /**
+   * Register a handler for 'unsend' events.
+   */
+  unsend(handler: LineHandler<E, UnsendEvent>): this {
+    return this.on('unsend', handler)
   }
 
   /**
@@ -93,6 +323,20 @@ export class LineHono<E extends Env = Env> {
   }
 
   /**
+   * Register a handler for 'memberJoined' events.
+   */
+  memberJoined(handler: LineHandler<E, MemberJoinEvent>): this {
+    return this.on('memberJoined', handler)
+  }
+
+  /**
+   * Register a handler for 'memberLeft' events.
+   */
+  memberLeft(handler: LineHandler<E, MemberLeaveEvent>): this {
+    return this.on('memberLeft', handler)
+  }
+
+  /**
    * Register a handler for 'beacon' events.
    */
   beacon(handler: LineHandler<E, BeaconEvent>): this {
@@ -100,47 +344,31 @@ export class LineHono<E extends Env = Env> {
   }
 
   /**
-   * Register high-level handlers from a factory.
+   * Register a handler for 'videoPlayComplete' events.
    */
-  loader(handlers: any[]): void {
-    for (const h of handlers) {
-      if (h.type === 'command') this.command(h.command.name, h.handler)
-      else if (h.type === 'component') this.component(h.component.id, h.handler)
-      else if (h.type === 'modal') this.modal(h.modal.id, h.handler)
-      else if (h.type === 'cron') this.cron(h.cron, h.handler)
-      else throw new Error(`Unknown handler type: ${JSON.stringify(h)}`)
-    }
+  videoPlayComplete(handler: LineHandler<E, VideoPlayCompleteEvent>): this {
+    return this.on('videoPlayComplete', handler)
   }
 
-  command(name: string, handler: Function): this {
-    this.#commands.set(name, handler)
-    return this
+  /**
+   * Register a handler for 'accountLink' events.
+   */
+  accountLink(handler: LineHandler<E, AccountLinkEvent>): this {
+    return this.on('accountLink', handler)
   }
 
-  component(id: string, handler: Function): this {
-    this.#components.set(id, handler)
-    return this
+  /**
+   * Register a handler for 'delivery' events.
+   */
+  delivery(handler: LineHandler<E, DeliveryEvent>): this {
+    return this.on('delivery', handler)
   }
 
-  modal(id: string, handler: Function): this {
-    this.#modals.set(id, handler)
-    return this
+  #middlewaresFor(type: WebhookEvent['type']): Middleware<E, any>[] {
+    return [...this.#middlewares, ...(this.#middlewaresByType.get(type) || [])]
   }
 
-  cron(expression: string, handler: Function): this {
-    this.#crons.set(expression, handler)
-    return this
-  }
-
-  fetch = async (request: Request, env?: E['Bindings'], executionCtx?: ExecutionContext): Promise<Response> => {
-    if (request.method === 'GET') {
-      return new Response('Operational🔥')
-    }
-
-    if (request.method !== 'POST') {
-      return new Response('Not Found', { status: 404 })
-    }
-
+  async #handleWebhook(request: Request, env?: E['Bindings'], executionCtx?: ExecutionContext): Promise<Response> {
     const line = this.#line(env)
     if (!line.CHANNEL_SECRET) throw newError('LineHono', 'LINE_CHANNEL_SECRET')
 
@@ -157,7 +385,8 @@ export class LineHono<E extends Env = Env> {
       const handlers = this.#handlers.get(event.type) || []
       return handlers.map(async handler => {
         const c = new Context<E, typeof event>(env, executionCtx, line, event)
-        return handler(c)
+        const run = compose(this.#middlewaresFor(event.type) as any, handler as any)
+        return run(c)
       })
     })
 
@@ -168,5 +397,15 @@ export class LineHono<E extends Env = Env> {
     }
 
     return new Response('OK')
+  }
+
+  fetch = async (request: Request, env?: E['Bindings'], executionCtx?: ExecutionContext): Promise<Response> => {
+    const httpRes = await this.#http.fetch(request as any, env as any, executionCtx as any)
+
+    // Preserve historical default for GET when no routes are defined.
+    if (request.method === 'GET' && httpRes.status === 404) {
+      return new Response('Operational🔥')
+    }
+    return httpRes
   }
 }

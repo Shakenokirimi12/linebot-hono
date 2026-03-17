@@ -23,12 +23,12 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./jsx": {
-      "import": "./dist/jsx.js",
-      "types": "./dist/jsx.d.ts"
+      "types": "./dist/jsx.d.ts",
+      "import": "./dist/jsx.js"
     }
   },
   "engines": {

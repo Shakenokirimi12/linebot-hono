@@ -16,36 +16,31 @@ describe('verify', () => {
   })
 
   it('should return the result of crypto.subtle (false)', async () => {
-    const mockSign = vi.fn().mockResolvedValue(new ArrayBuffer(32))
+    const mockVerify = vi.fn().mockResolvedValue(false)
     const mockImportKey = vi.fn().mockResolvedValue('importedKey')
     vi.stubGlobal('crypto', {
       subtle: {
-        sign: mockSign,
+        verify: mockVerify,
         importKey: mockImportKey,
       },
     })
-    // Since we mock sign to return 32 bytes of 0s, and signature is 'test_signature', it should be false
-    expect(await verify(body, signature, secret)).toBe(false)
-    expect(mockSign).toHaveBeenCalled()
+    expect(await verify(body, 'AQID', secret)).toBe(false)
+    expect(mockVerify).toHaveBeenCalled()
     expect(mockImportKey).toHaveBeenCalled()
   })
 
   it('should return true if signature matches', async () => {
-    // This is hard to mock perfectly without reproducing the logic,
-    // but we can trust the implementation if the logic looks sound.
-    // Let's at least test that it calls subtle.sign with correct params.
-    const mockSign = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]).buffer)
+    const mockVerify = vi.fn().mockResolvedValue(true)
     const mockImportKey = vi.fn().mockResolvedValue('key')
     vi.stubGlobal('crypto', {
       subtle: {
-        sign: mockSign,
+        verify: mockVerify,
         importKey: mockImportKey,
       },
     })
 
-    // base64 of [1,2,3] is 'AQID'
     await verify(body, 'AQID', secret)
 
-    expect(mockSign).toHaveBeenCalledWith('HMAC', 'key', expect.any(Uint8Array))
+    expect(mockVerify).toHaveBeenCalledWith('HMAC', 'key', expect.any(Uint8Array), expect.any(Uint8Array))
   })
 })

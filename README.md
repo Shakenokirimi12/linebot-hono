@@ -20,6 +20,10 @@ Thank you for [Yusuke Wada](https://github.com/yusukebe) and Hono contributors!
 npm i line-hono
 ```
 
+## Docs
+
+- [`docs/index.md`](./docs/index.md)
+
 ## Example Code
 
 ```ts
@@ -64,20 +68,6 @@ app.message('jsx', (c) => {
       </Box>
     </Bubble>
   ))
-})
-```
-
-## Factory API
-
-Organize your handlers cleanly using `createFactory`.
-
-```ts
-import { createFactory } from 'line-hono'
-
-const factory = createFactory()
-
-export const startCommand = factory.command('start', 'Start the bot', (c) => {
-  return c.text('Bot started!')
 })
 ```
 

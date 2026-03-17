@@ -23,10 +23,11 @@
         "useImportExtensions": "off" // For simple coding purposes
       },
       "complexity": {
-        "noBannedTypes": "off" // Allow banned types
+        "noBannedTypes": "off", // Allow banned types
+        "useLiteralKeys": "off" // Conflicts with TS noPropertyAccessFromIndexSignature
       },
       "nursery": {
-        "useExplicitType": "warn" // Encourage explicit type annotation
+        "useExplicitType": "off" // Too noisy for fluent APIs
       },
       "performance": {
         "noBarrelFile": "off", // For simple coding purposes
