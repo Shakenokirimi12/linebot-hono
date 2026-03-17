@@ -1,6 +1,6 @@
 # `match` / `msg` 詳説
 
-`line-hono` には “似ているけど目的が違う” 2つの道具があります。
+`linebot-hono` には “似ているけど目的が違う” 2つの道具があります。
 
 - **`match.*`**: 受信イベントを **型で絞り込む**ための matcher（おすすめ）
 - **`msg.*`**: 送信メッセージを **オブジェクトを書かずに**作るための builder
@@ -11,7 +11,7 @@
 handler 内で `c.event.message` の型が絞られるので、安全にプロパティへアクセスできます。
 
 ```ts
-import { LineHono, match } from 'line-hono'
+import { LineHono, match } from 'linebot-hono'
 
 const app = new LineHono()
 
@@ -42,7 +42,7 @@ app.message(match.text(/hello/i), c => c.text('hi'))
 `c.push.sticker(...)` のようなショートハンドがある場合でも、`msg` は「配列でまとめたい」「条件分岐で組み立てたい」時に便利です。
 
 ```ts
-import { msg } from 'line-hono'
+import { msg } from 'linebot-hono'
 
 await c.push([
   msg.text('hello'),

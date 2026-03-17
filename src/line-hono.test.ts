@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
 import { describe, expect, it, vi } from 'vitest'
 import * as Flex from './flex'
-import { LineHono } from './line-hono'
+import { LineHono } from './linebot-hono'
 import { match } from './match'
 import { sticker } from './messages'
 

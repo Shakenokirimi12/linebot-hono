@@ -3,7 +3,7 @@
 ## 1) ping/pong（最短）
 
 ```ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 
 const app = new LineHono()
 app.text('ping', c => c.text('pong'))
@@ -14,7 +14,7 @@ export default app
 ## 2) スタンプにだけ反応したい（型付き）
 
 ```ts
-import { LineHono, match } from 'line-hono'
+import { LineHono, match } from 'linebot-hono'
 
 const app = new LineHono()
 

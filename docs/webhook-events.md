@@ -14,7 +14,7 @@
 「受信したものに応じて返す」ボットで一番よく書くパターンです。
 
 ```ts
-import { LineHono, match, msg } from 'line-hono'
+import { LineHono, match, msg } from 'linebot-hono'
 
 const app = new LineHono()
 app.webhook('/')
@@ -77,13 +77,13 @@ app.use('message', async (_c, next) => {
 
 ```ts
 // message.ts
-import type { LineHono } from 'line-hono'
+import type { LineHono } from 'linebot-hono'
 export const messageHandlers = (app: LineHono) => {
   app.text('ping', c => c.text('pong'))
 }
 
 // index.ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 import { messageHandlers } from './message'
 
 const app = new LineHono()

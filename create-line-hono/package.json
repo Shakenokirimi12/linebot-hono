@@ -1,0 +1,19 @@
+{
+  "name": "create-linebot-hono",
+  "version": "0.1.0",
+  "description": "Scaffold a LINE bot project powered by linebot-hono.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "create-linebot-hono": "./bin/create-linebot-hono.js"
+  },
+  "files": [
+    "bin",
+    "templates",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18.4.0"
+  }
+}
+

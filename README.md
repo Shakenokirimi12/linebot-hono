@@ -1,4 +1,4 @@
-# 🔥 LINE Hono [![npm v](https://img.shields.io/npm/v/line-hono)](https://www.npmjs.com/package/line-hono)
+# 🔥 LINE Bot Hono [![npm v](https://img.shields.io/npm/v/linebot-hono)](https://www.npmjs.com/package/linebot-hono)
 
 **This library enables you to easily build LINE bots on Cloudflare Workers**
 
@@ -17,7 +17,13 @@ Thank you for [Yusuke Wada](https://github.com/yusukebe) and Hono contributors!
 ## Install
 
 ```shell
-npm i line-hono
+npm i linebot-hono
+```
+
+## Create a new project
+
+```shell
+npm create linebot-hono@latest my-bot
 ```
 
 ## Docs
@@ -27,7 +33,7 @@ npm i line-hono
 ## Example Code
 
 ```ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 
 const app = new LineHono()
 
@@ -41,12 +47,12 @@ export default app
 ### Functional Flex Message
 
 ```ts
-import { bubble, box, text } from 'line-hono'
+import { bubble, box, text } from 'linebot-hono'
 
 app.message('flex', (c) => {
   return c.flex('Alt text', bubble({
     body: box('vertical', [
-      text('Hello from line-hono!')
+      text('Hello from linebot-hono!')
     ])
   }))
 })
@@ -57,8 +63,8 @@ app.message('flex', (c) => {
 ```tsx
 /** @jsx jsx */
 /** @jsxFrag Fragment */
-import { jsx } from 'line-hono/jsx'
-import { Bubble, Box, Text } from 'line-hono/jsx'
+import { jsx } from 'linebot-hono/jsx'
+import { Bubble, Box, Text } from 'linebot-hono/jsx'
 
 app.message('jsx', (c) => {
   return c.flex('Alt text', (

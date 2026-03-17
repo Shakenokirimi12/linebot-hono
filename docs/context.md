@@ -1,6 +1,6 @@
 # Context リファレンス（`c` でできること）
 
-`line-hono` の handler には `Context`（慣習的に `c`）が渡されます。
+`linebot-hono` の handler には `Context`（慣習的に `c`）が渡されます。
 このページは「`c` で何ができるか」を一覧できるようにまとめたリファレンスです。
 
 ## よく使うプロパティ
@@ -161,7 +161,7 @@
 
 ## 管理系API（代表）
 
-頻出どころだけ `line-hono` 側で “入口” を整えています。
+頻出どころだけ `linebot-hono` 側で “入口” を整えています。
 
 ### Bot / Profile / Link token
 
@@ -275,7 +275,7 @@
 
 ## 公式クライアントへの逃げ道（最重要）
 
-`line-hono` は「短く書けるショートハンド」を提供しますが、全APIを独自に再定義はしません。
+`linebot-hono` は「短く書けるショートハンド」を提供しますが、全APIを独自に再定義はしません。
 不足分はいつでも **`c.client`（`@line/bot-sdk` の `MessagingApiClient`）** を直接呼び出せます。
 
 ```ts

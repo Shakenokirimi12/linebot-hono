@@ -1,6 +1,6 @@
 # Messaging API（日本語）
 
-`line-hono` は `Context` に **Hono風のfluent API** を生やし、短く・読みやすく書けるようにします。
+`linebot-hono` は `Context` に **Hono風のfluent API** を生やし、短く・読みやすく書けるようにします。
 
 このページでは「送る（Messaging API）」「足りないときの逃げ道」「クーポンの作成→送信」「管理系API」をまとめます。
 
@@ -210,7 +210,7 @@ const usage = await c.statistics.aggregationUnit.usage()
 例:
 
 ```ts
-import { LineHono, match, msg } from 'line-hono'
+import { LineHono, match, msg } from 'linebot-hono'
 
 const app = new LineHono()
 
@@ -224,6 +224,6 @@ app.message(c => c.push(msg.sticker('1', '2')))
 
 ## 注意点
 
-- **スタンプ/クーポン等の一部メッセージは、`@line/bot-sdk` の `Message` 型更新が追いつかない場合があります**。その場合でも `line-hono` のショートハンド（例: `c.push.coupon(...)`）は実際のAPI仕様に合わせて送信できるようにしています。
+- **スタンプ/クーポン等の一部メッセージは、`@line/bot-sdk` の `Message` 型更新が追いつかない場合があります**。その場合でも `linebot-hono` のショートハンド（例: `c.push.coupon(...)`）は実際のAPI仕様に合わせて送信できるようにしています。
 - `c.client` は最終手段として常に使えます（APIの全網羅）。
 

@@ -1,6 +1,6 @@
 export * from './context'
 export * from './flex'
-export * from './line-hono'
+export * from './linebot-hono'
 export * from './match'
 export * from './messages'
 export type * from './types'

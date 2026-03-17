@@ -1,6 +1,6 @@
-# line-hono Docs（日本語）
+# linebot-hono Docs（日本語）
 
-`line-hono` は、LINE Messaging API を **Honoっぽい書き心地**で扱うためのライブラリです（Cloudflare Workers などのエッジ環境を想定）。
+`linebot-hono` は、LINE Messaging API を **Honoっぽい書き心地**で扱うためのライブラリです（Cloudflare Workers などのエッジ環境を想定）。
 
 ## どこを読めばいい？
 
@@ -12,7 +12,7 @@
 ## クイックスタート
 
 ```ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 
 const app = new LineHono()
 

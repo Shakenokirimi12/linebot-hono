@@ -1,6 +1,6 @@
 # Cloudflare Workers で動かす（実運用メモ）
 
-`line-hono` は Cloudflare Workers を強く意識しています。
+`linebot-hono` は Cloudflare Workers を強く意識しています。
 このページは「デプロイで詰まりがちな点」をまとめたメモです。
 
 ## 必要な環境変数
@@ -14,12 +14,12 @@
 検証を差し替えたい場合は `new LineHono({ verify })` を渡してください。
 
 ```ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 
 const app = new LineHono({
   verify: async (signature, body, secret) => {
     // 独自のログ等を入れたい場合に
-    return await (await import('line-hono/verify')).verify(signature, body, secret)
+    return await (await import('linebot-hono/verify')).verify(signature, body, secret)
   },
 })
 
@@ -41,7 +41,7 @@ export default app
 ## `c.client` を使うとき
 
 `c.client` は `@line/bot-sdk` の公式クライアントです。
-`line-hono` のショートハンドで足りないときは、まずここに逃げてください。
+`linebot-hono` のショートハンドで足りないときは、まずここに逃げてください。
 
 ```ts
 await c.client.getBotInfo()
@@ -53,7 +53,7 @@ await c.client.getBotInfo()
 Webhook 以外のエンドポイント（ヘルスチェック等）を増やしたい場合に便利です。
 
 ```ts
-import { LineHono } from 'line-hono'
+import { LineHono } from 'linebot-hono'
 
 const app = new LineHono()
 app.webhook('/webhook')
