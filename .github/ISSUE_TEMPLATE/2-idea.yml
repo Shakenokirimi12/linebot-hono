@@ -1,0 +1,17 @@
+name: ✨ Idea
+description: Suggest an idea, feature, or enhancement
+labels: [idea]
+body:
+  - type: textarea
+    attributes:
+      label: Idea Description
+      placeholder: |
+        - New features or ideas
+        - References, links, or code snippets
+    validations:
+      required: true
+  - type: checkboxes
+    attributes:
+      label: Pull Request
+      options:
+        - label: Available and eager to create a pull request

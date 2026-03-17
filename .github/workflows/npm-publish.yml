@@ -1,0 +1,61 @@
+name: 📦 NPM Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type to bump'
+        required: true
+        type: choice
+        options:
+        - patch
+        - minor
+        - major
+        - prerelease
+        - prepatch
+        - preminor
+        - premajor
+
+permissions: read-all
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 'lts/*'
+          registry-url: 'https://registry.npmjs.org'
+      - run: |
+          npm i -g npm@latest @aikidosec/safe-chain@latest
+          safe-chain setup-ci
+          npm ci
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+      - name: Create release branch
+        run: git checkout -b release
+
+      - name: Test
+        run: |
+          npm run test
+          npm run build
+
+      - name: Version upgrade
+        run: npm version ${{ github.event.inputs.version_type }}
+
+      - name: Push changes and create pull request
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push --set-upstream origin release
+          git push origin --tags
+          gh pr create --base main --head release --title "Release ${{ github.event.inputs.version_type }}" --body "Automated release PR"
+
+      - name: Publish to npm
+        run: npm publish --provenance

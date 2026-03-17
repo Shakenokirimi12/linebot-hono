@@ -1,0 +1,49 @@
+{
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  "formatter": {
+    "indentStyle": "space",
+    "lineWidth": 120
+  },
+  "javascript": {
+    "formatter": {
+      "arrowParentheses": "asNeeded",
+      "quoteStyle": "single",
+      "jsxQuoteStyle": "double",
+      "semicolons": "asNeeded"
+    }
+  },
+  "linter": {
+    "domains": {
+      "project": "all",
+      "test": "all"
+    },
+    "rules": {
+      "recommended": true,
+      "correctness": {
+        "useImportExtensions": "off" // For simple coding purposes
+      },
+      "complexity": {
+        "noBannedTypes": "off" // Allow banned types
+      },
+      "nursery": {
+        "useExplicitType": "warn" // Encourage explicit type annotation
+      },
+      "performance": {
+        "noBarrelFile": "off", // For simple coding purposes
+        "noReExportAll": "off" // For consistency in file separation
+      },
+      "suspicious": {
+        "noExplicitAny": "off", // Allow type any
+        "noConsole": {
+          "level": "on",
+          "options": {
+            "allow": ["assert", "error", "info", "warn"]
+          }
+        }
+      }
+    }
+  },
+  "files": {
+    "includes": [".github/**", "src/**", "bench/**", "*.ts", "*.md", "*.json", "*.jsonc"]
+  }
+}

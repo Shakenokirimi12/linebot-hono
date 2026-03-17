@@ -1,0 +1,57 @@
+{
+  "name": "line-hono",
+  "version": "0.1.0",
+  "description": "This library enables you to easily build LINE bots on Cloudflare Workers",
+  "author": "Luis (https://github.com/luisfun)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luisfun/line-hono"
+  },
+  "homepage": "https://github.com/luisfun/line-hono",
+  "license": "MIT",
+  "keywords": [
+    "line-hono",
+    "line-bot",
+    "cloudflare-workers"
+  ],
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./jsx": {
+      "import": "./dist/jsx.js",
+      "types": "./dist/jsx.d.ts"
+    }
+  },
+  "engines": {
+    "node": ">=18.4.0"
+  },
+  "scripts": {
+    "fix": "biome check --write .",
+    "fix:unsafe": "biome check --write --unsafe .",
+    "test": "biome check . && tsc && vitest run --coverage",
+    "build": "tsup src/index.ts src/jsx.ts --format esm --dts --clean && attw -P . --ignore-rules cjs-resolves-to-esm"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
+    "@biomejs/biome": "^2.4.4",
+    "@tsconfig/strictest": "^2.0.8",
+    "@vitest/coverage-v8": "^4.0.18",
+    "hono": "^4.12.3",
+    "mitata": "^1.0.34",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "@line/bot-sdk": "^10.6.0"
+  }
+}

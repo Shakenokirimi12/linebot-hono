@@ -1,0 +1,25 @@
+name: ❓ Help
+description: Unresolvable errors or points where you're stuck
+labels: [help]
+body:
+  - type: input
+    attributes:
+      label: line-hono version
+      placeholder: 0.0.0
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Runtime / Platform
+      placeholder: Cloudflare Workers, Deno, Bun, etc.
+  - type: textarea
+    attributes:
+      label: What you cannot solve
+      placeholder: |
+        - Unresolvable error
+        - Need hints on implementation method
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional Info
