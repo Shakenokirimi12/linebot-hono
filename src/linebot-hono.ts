@@ -33,39 +33,37 @@ type Plugin<E extends Env> = (app: LineHono<E>) => void
 type MessageMatcher = string | RegExp | TextMatcher | Matcher | Record<string, unknown>
 type MessageHandler<E extends Env, T extends EventMessage['type']> = LineHandler<E, MessageEventOf<T>>
 
-const compose = <E extends Env, T extends WebhookEvent>(
+type InternalHandler<E extends Env, T extends WebhookEvent = any> = (c: Context<E, T>) => Promise<boolean> | boolean
+
+const runWithMiddleware = async <E extends Env, T extends WebhookEvent>(
+  c: Context<E, T>,
   middlewares: Middleware<E, T>[],
-  handler: LineHandler<E, T>,
-): ((c: Context<E, T>, next?: Next) => Promise<void>) => {
-  const fns: Middleware<E, T>[] = [
-    ...middlewares,
-    async (c, _next) => {
-      await handler(c)
-    },
-  ]
+  handler: InternalHandler<E, T>,
+): Promise<boolean> => {
+  let index = -1
+  let handled = false
 
-  return async (c: Context<E, T>, next?: Next) => {
-    let index = -1
-    await dispatch(0)
+  const dispatch = async (i: number): Promise<void> => {
+    if (i <= index) throw new Error('next() called multiple times')
+    index = i
 
-    async function dispatch(i: number): Promise<void> {
-      if (i <= index) {
-        throw new Error('next() called multiple times')
-      }
-      index = i
-
-      const fn = fns[i] || (i === fns.length && next) || undefined
-      if (!fn) return
-      await (fn as any)(c, () => dispatch(i + 1))
+    const fn = middlewares[i]
+    if (fn) {
+      await fn(c, () => dispatch(i + 1))
+      return
     }
+    handled = await handler(c)
   }
+
+  await dispatch(0)
+  return handled
 }
 
 export class LineHono<E extends Env = Env> {
   #verify: Verify
   #line: (env: unknown) => LineEnv
   #http = new Hono()
-  #handlers: Map<string, LineHandler<E, any>[]> = new Map()
+  #handlers: Map<string, InternalHandler<E, any>[]> = new Map()
   #middlewares: Middleware<E, any>[] = []
   #middlewaresByType: Map<string, Middleware<E, any>[]> = new Map()
 
@@ -129,7 +127,11 @@ export class LineHono<E extends Env = Env> {
     if (!this.#handlers.has(type)) {
       this.#handlers.set(type, [])
     }
-    this.#handlers.get(type)?.push(handler)
+    // Non-message events: run all handlers (do not stop propagation).
+    this.#handlers.get(type)?.push(async c => {
+      await handler(c)
+      return false
+    })
     return this
   }
 
@@ -146,17 +148,21 @@ export class LineHono<E extends Env = Env> {
   message(matcher: MessageMatcher, handler: LineHandler<E, MessageEvent>): this
   message(arg1: MessageMatcher | LineHandler<E, MessageEvent>, arg2?: LineHandler<E, any>): this {
     if (typeof arg1 === 'function') {
-      return this.on('message', arg1)
+      // Message routing is first-match by default.
+      return this.message({ type: 'text', value: undefined } as any, arg1 as any)
     }
 
     const matcher = arg1
     const handler = arg2
     if (!handler) throw new Error('handler is required')
 
-    return this.on('message', c => {
-      if (this.#matchMessage(c.event, matcher)) return handler(c)
-      return
+    if (!this.#handlers.has('message')) this.#handlers.set('message', [])
+    this.#handlers.get('message')?.push(async c => {
+      if (!this.#matchMessage(c.event, matcher)) return false
+      await handler(c)
+      return true
     })
+    return this
   }
 
   text(matcher: string | RegExp, handler: MessageHandler<E, 'text'>): this {
@@ -194,6 +200,7 @@ export class LineHono<E extends Env = Env> {
       if (msg?.type !== 'text') return false
       const text = msg?.text
       if (typeof text !== 'string') return false
+      if (!matcher.value) return true
       return typeof matcher.value === 'string' ? text === matcher.value : matcher.value.test(text)
     }
 
@@ -281,20 +288,26 @@ export class LineHono<E extends Env = Env> {
 
     const data: WebhookRequestBody = JSON.parse(body)
 
-    const promises = data.events.flatMap(event => {
+    const promises = data.events.map(async event => {
       const handlers = this.#handlers.get(event.type) || []
-      return handlers.map(async handler => {
-        const c = new Context<E, typeof event>(env, executionCtx, line, event)
-        const run = compose(this.#middlewaresFor(event.type) as any, handler as any)
-        return run(c)
-      })
+      const c = new Context<E, typeof event>(env, executionCtx, line, event)
+      const middlewares = this.#middlewaresFor(event.type) as any
+
+      if (event.type === 'message') {
+        for (const h of handlers) {
+          const handled = await runWithMiddleware(c as any, middlewares, h as any)
+          if (handled) break
+        }
+        return
+      }
+
+      for (const h of handlers) {
+        await runWithMiddleware(c as any, middlewares, h as any)
+      }
     })
 
-    if (executionCtx?.waitUntil) {
-      executionCtx.waitUntil(Promise.all(promises))
-    } else {
-      await Promise.all(promises)
-    }
+    if (executionCtx?.waitUntil) executionCtx.waitUntil(Promise.all(promises))
+    else await Promise.all(promises)
 
     return new Response('OK')
   }

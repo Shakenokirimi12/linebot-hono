@@ -304,6 +304,36 @@ describe('LineHono', () => {
       expect(handler).toHaveBeenCalledTimes(1)
     })
 
+    it('should stop after first matched message route (first-match)', async () => {
+      const verify = vi.fn().mockResolvedValue(true)
+      const app = new LineHono({ verify })
+      app.webhook('/')
+      const called: string[] = []
+
+      app.message(match.sticker('1', '2'), c => {
+        called.push('specific')
+        return c.replyIfPossible.text('specific')
+      })
+      app.message(match.sticker(), c => {
+        called.push('any')
+        return c.replyIfPossible.text('any')
+      })
+
+      const event = {
+        type: 'message',
+        message: { type: 'sticker', packageId: '1', stickerId: '2', stickerResourceType: 'STATIC', id: 's_first' },
+        replyToken: 'token',
+        source: { type: 'user', userId: 'user1' },
+        timestamp: 123,
+        mode: 'active',
+        webhookEventId: 'id_sticker_first_match',
+        deliveryContext: { isRedelivery: false },
+      }
+
+      await app.fetch(postRequest({ events: [event] }), env)
+      expect(called).toEqual(['specific'])
+    })
+
     it('should match sticker message using stickerMessage helper', async () => {
       const verify = vi.fn().mockResolvedValue(true)
       const app = new LineHono({ verify })
@@ -369,6 +399,28 @@ describe('LineHono', () => {
         timestamp: 123,
         mode: 'active',
         webhookEventId: 'id_text_regex_matcher',
+        deliveryContext: { isRedelivery: false },
+      }
+
+      await app.fetch(postRequest({ events: [event] }), env)
+      expect(handler).toHaveBeenCalledTimes(1)
+    })
+
+    it('should match any text using match.text()', async () => {
+      const verify = vi.fn().mockResolvedValue(true)
+      const app = new LineHono({ verify })
+      app.webhook('/')
+      const handler = vi.fn()
+      app.message(match.text() as any, handler)
+
+      const event = {
+        type: 'message',
+        message: { type: 'text', text: 'anything', id: 't_any' },
+        replyToken: 'token',
+        source: { type: 'user', userId: 'user1' },
+        timestamp: 123,
+        mode: 'active',
+        webhookEventId: 'id_text_any_matcher',
         deliveryContext: { isRedelivery: false },
       }
 

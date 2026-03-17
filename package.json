@@ -1,6 +1,6 @@
 {
   "name": "linebot-hono",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "This library enables you to easily build LINE bots on Cloudflare Workers",
   "license": "MIT",
   "keywords": [
