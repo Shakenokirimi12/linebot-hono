@@ -1,6 +1,6 @@
 {
   "name": "create-linebot-hono",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Scaffold a LINE bot project powered by linebot-hono.",
   "license": "MIT",
   "type": "module",
