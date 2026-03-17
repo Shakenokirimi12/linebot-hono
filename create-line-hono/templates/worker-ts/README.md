@@ -10,6 +10,8 @@ Install:
 pnpm i
 ```
 
+Enable `nodejs_compat` in `wrangler.jsonc` (required for `@line/bot-sdk`).
+
 Set secrets:
 
 ```sh

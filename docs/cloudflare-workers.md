@@ -8,6 +8,16 @@
 - **`LINE_CHANNEL_SECRET`**: Webhook 署名検証に使います（必須）
 - **`LINE_CHANNEL_ACCESS_TOKEN`**: Messaging API 呼び出しに使います（push/broadcast等を使う場合は必須）
 
+## nodejs_compat について（重要）
+
+`linebot-hono` は内部で `@line/bot-sdk` を利用します。Workers では `@line/bot-sdk` が `node:buffer` / `node:crypto` / `node:stream` を参照するため、`wrangler.jsonc` で **`nodejs_compat` を有効化**してください。
+
+```jsonc
+{
+  "compatibility_flags": ["nodejs_compat"]
+}
+```
+
 ## 署名検証について
 
 デフォルトで `x-line-signature` を検証します。

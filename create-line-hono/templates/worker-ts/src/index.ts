@@ -2,7 +2,6 @@ import { LineHono } from 'linebot-hono'
 
 const app = new LineHono()
 
-// Declare webhook endpoint (Hono-style).
 app.webhook('/')
 
 app.text('ping', c => c.text('pong'))

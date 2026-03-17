@@ -117,8 +117,8 @@ async function main() {
   const pkg = pkgRaw.replaceAll('__PACKAGE_NAME__', packageName)
   await writeFile(pkgPath, pkg, 'utf8')
 
-  // Replace placeholder in wrangler.toml
-  const wranglerPath = path.join(targetDir, 'wrangler.toml')
+  // Replace placeholder in wrangler.jsonc
+  const wranglerPath = path.join(targetDir, 'wrangler.jsonc')
   if (await pathExists(wranglerPath)) {
     const wRaw = await readFile(wranglerPath, 'utf8')
     const w = wRaw.replaceAll('__WORKER_NAME__', packageName)
